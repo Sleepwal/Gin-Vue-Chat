@@ -1,0 +1,35 @@
+# 依赖目录
+**/node_modules/
+**/vendor/
+
+# IDE配置文件
+.vscode/
+.idea/
+
+# 本地环境文件
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+*.log
+logs/
+
+# 构建输出目录
+dist/
+build/
+out/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 原内容保持不变（但建议修改格式）
+frontend/node_modules
+
+# 后端相关忽略
+/go/bin/
+/go/pkg/
+*.exe
+*.test
+*.prof
