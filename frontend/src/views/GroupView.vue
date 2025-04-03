@@ -20,16 +20,18 @@
             <n-icon><people /></n-icon>
           </template>
         </n-button>
-        <n-button quaternary circle>
+        <n-button quaternary circle @click="showSearchModal = true">
           <template #icon>
             <n-icon><search /></n-icon>
           </template>
         </n-button>
-        <n-button quaternary circle>
-          <template #icon>
-            <n-icon><EllipsisVertical /></n-icon>
-          </template>
-        </n-button>
+        <n-dropdown :options="groupMenuOptions" @select="handleGroupMenuSelect">
+          <n-button quaternary circle>
+            <template #icon>
+              <n-icon><EllipsisVertical /></n-icon>
+            </template>
+          </n-button>
+        </n-dropdown>
       </div>
     </div>
     
@@ -99,11 +101,21 @@
               :fallback-src="defaultAvatar"
             />
             <div class="member-info">
-              <div class="member-name">{{ member.nickname }}</div>
+              <!-- <div class="member-name">{{ member.nickname }}</div> -->
               <div class="member-username">@{{ member.username }}</div>
             </div>
-            <div class="member-role" v-if="member.isOwner">群主</div>
-            <div class="member-role" v-else-if="member.isAdmin">管理员</div>
+
+             <!-- 在线信息 -->
+            <div class="member-status" v-if="member.status=='online'">
+              <n-tag type="success" size="small">在线</n-tag>
+            </div>
+            <div class="member-status" v-else>
+              <n-tag type="error" size="small">离线</n-tag>
+            </div>
+
+            <!-- 角色信息 -->
+            <div class="member-role" v-if="member.role=='admin'">群主</div>
+            <div class="member-role" v-else-if="member.role!=='admin'">成员</div>
           </div>
           
           <div v-if="groupMembers.length === 0" class="no-members">
@@ -112,6 +124,70 @@
         </div>
       </n-drawer-content>
     </n-drawer>
+    
+    <!-- 搜索消息对话框 -->
+    <n-modal
+      v-model:show="showSearchModal"
+      title="搜索消息"
+      preset="dialog"
+      :show-icon="false"
+    >
+      <div class="search-container">
+        <n-input
+          v-model:value="searchQuery"
+          placeholder="输入关键词搜索消息"
+          clearable
+          @keydown.enter="searchMessages"
+        >
+          <template #suffix>
+            <n-button quaternary circle @click="searchMessages">
+              <template #icon>
+                <n-icon><search /></n-icon>
+              </template>
+            </n-button>
+          </template>
+        </n-input>
+        
+        <div class="search-results" v-if="searchResults.length > 0">
+          <div v-for="result in searchResults" :key="result.id" class="search-result-item">
+            <div class="search-result-sender">{{ getSenderName(result.senderId) }}</div>
+            <div class="search-result-content">{{ result.content }}</div>
+            <div class="search-result-time">{{ formatMessageTime(result.timestamp) }}</div>
+          </div>
+        </div>
+        
+        <div v-else-if="hasSearched" class="no-search-results">
+          没有找到匹配的消息
+        </div>
+      </div>
+    </n-modal>
+    
+    <!-- 邀请好友对话框 -->
+    <n-modal
+      v-model:show="showInviteModal"
+      title="邀请好友加入群组"
+      preset="dialog"
+      positive-text="邀请"
+      negative-text="取消"
+      @positive-click="handleInviteFriend"
+    >
+      <n-form
+        ref="inviteFormRef"
+        :model="inviteForm"
+        :rules="inviteRules"
+        label-placement="left"
+        label-width="80"
+      >
+        <n-form-item path="username" label="好友用户名">
+          <n-select
+            v-model:value="inviteForm.username"
+            placeholder="选择要邀请的好友"
+            :options="friendOptions"
+            filterable
+          />
+        </n-form-item>
+      </n-form>
+    </n-modal>
   </div>
   
   <div v-else class="no-group-selected">
@@ -128,9 +204,10 @@ import { format } from 'date-fns'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
 import http from '../utils/request'
+import avatar from '@/assets/defaultAvatar.jpg'
 
 // 默认头像
-const defaultAvatar = 'https://cn.bing.com/images/search?view=detailV2&ccid=StrDRqen&id=92D4568BD21B0D03661242697B510D4D295C4727&thid=OIP.StrDRqennoZNbzSPZapKZwAAAA&mediaurl=https%3a%2f%2fimg.shetu66.com%2f2023%2f06%2f26%2f1687770031227597.png&exph=265&expw=474&q=%e9%a3%8e%e6%99%af%e5%9b%be&simid=608050023063974373&FORM=IRPRST&ck=69A4339CE32B1BCBD039D689CE35ACC3&selectedIndex=9&itb=0'
+const defaultAvatar = avatar
 const defaultGroupAvatar = 'https://07akioni.oss-cn-beijing.aliyuncs.com/07akioni.jpeg'
 
 // 路由和消息
@@ -151,10 +228,54 @@ const messageText = ref('')
 const showMemberList = ref(false)
 const groupMembers = ref([])
 
+// 搜索消息
+const showSearchModal = ref(false)
+const searchQuery = ref('')
+const searchResults = ref([])
+const hasSearched = ref(false)
+
+// 邀请好友
+const showInviteModal = ref(false)
+const inviteFormRef = ref(null)
+const inviteForm = ref({
+  username: null
+})
+const inviteRules = {
+  username: [
+    { required: true, message: '请选择要邀请的好友', trigger: 'blur' }
+  ]
+}
+
+// 群组菜单选项
+const groupMenuOptions = [
+  {
+    label: '邀请好友',
+    key: 'invite'
+  },
+  {
+    label: '群组信息',
+    key: 'info'
+  }
+]
+
 // 当前群组
 const currentGroup = computed(() => {
   const groupId = route.params.id
   return userStore.groups.find(g => g.id === groupId)
+})
+
+// 可邀请的好友选项
+const friendOptions = computed(() => {
+  // 获取当前群组成员的ID列表
+  const memberIds = groupMembers.value.map(member => member.id)
+  
+  // 过滤出不在群组中的好友
+  return userStore.friends
+    .filter(friend => !memberIds.includes(friend.id))
+    .map(friend => ({
+      label: `${friend.nickname || friend.username} (@${friend.username})`,
+      value: friend.username
+    }))
 })
 
 // 获取发送者头像
@@ -212,7 +333,7 @@ async function fetchGroupMembers() {
   
   try {
     const response = await http.get(`/api/groups/${currentGroup.value.id}/members`)
-    groupMembers.value = response.data
+    groupMembers.value = response.data.members
   } catch (error) {
     console.error('Fetch group members error:', error)
     message.error('获取群成员列表失败')
@@ -259,6 +380,59 @@ watch(() => showMemberList.value, (newVal) => {
 onMounted(() => {
   scrollToBottom()
 })
+
+// 搜索消息
+function searchMessages() {
+  if (!searchQuery.value.trim()) return
+  
+  hasSearched.value = true
+  const query = searchQuery.value.toLowerCase()
+  
+  // 在当前群聊消息中搜索
+  searchResults.value = chatStore.currentChatMessages.filter(message => 
+    message.content.toLowerCase().includes(query)
+  )
+}
+
+// 处理群组菜单选择
+function handleGroupMenuSelect(key) {
+  switch (key) {
+    case 'invite':
+      showInviteModal.value = true
+      break
+    case 'info':
+      message.info('群组信息功能正在开发中')
+      break
+  }
+}
+
+// 邀请好友加入群组
+async function handleInviteFriend() {
+  try {
+    await inviteFormRef.value?.validate()
+    
+    if (!currentGroup.value) {
+      message.error('群组不存在或已被删除')
+      return
+    }
+    
+    // 调用API邀请好友
+    const response = await http.post(`/api/groups/${currentGroup.value.id}/members`, {
+      username: inviteForm.value.username,
+      role: 'member'
+    })
+    
+    message.success('邀请好友成功')
+    showInviteModal.value = false
+    inviteForm.value.username = null
+    
+    // 刷新群成员列表
+    fetchGroupMembers()
+  } catch (error) {
+    console.error('邀请好友失败:', error)
+    message.error(error.response?.data?.error || '邀请好友失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -397,6 +571,11 @@ onMounted(() => {
   flex: 1;
 }
 
+.member-status {
+  margin-left: 8px;
+  flex: 1;
+}
+
 .member-name {
   font-weight: 500;
 }
@@ -413,6 +592,52 @@ onMounted(() => {
 }
 
 .no-members {
+  padding: 24px 16px;
+  text-align: center;
+  color: #999;
+}
+
+/* 搜索消息样式 */
+.search-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.search-results {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.search-result-item {
+  padding: 12px;
+  border-bottom: 1px solid #f3f3f3;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-sender {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.search-result-content {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.search-result-time {
+  font-size: 12px;
+  color: #999;
+  text-align: right;
+}
+
+.no-search-results {
   padding: 24px 16px;
   text-align: center;
   color: #999;
