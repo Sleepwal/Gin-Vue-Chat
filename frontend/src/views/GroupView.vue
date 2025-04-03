@@ -60,6 +60,9 @@
             <div v-if="message.senderId !== userStore.userId" class="message-sender">
               {{ getSenderName(message.senderId) }}
             </div>
+            <div v-else>
+              {{ userStore.username }}
+            </div>
             <div class="message-bubble">
               {{ message.content }}
             </div>
@@ -287,7 +290,7 @@ function getSenderAvatar(senderId) {
 // 获取发送者名称
 function getSenderName(senderId) {
   const member = groupMembers.value.find(m => m.id === senderId)
-  return member?.nickname || '未知用户'
+  return member?.username || '未知用户'
 }
 
 // 格式化消息时间

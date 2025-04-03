@@ -11,7 +11,7 @@
         :model="formValue"
         :rules="rules"
         label-placement="left"
-        label-width="80"
+        label-width="85"
         require-mark-placement="right-hanging"
         size="large"
         @submit.prevent="handleSubmit"
@@ -149,15 +149,21 @@ async function handleSubmit() {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-image: url('@/assets/auth-background.svg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .register-card {
-  width: 400px;
+  width: 430px;
   padding: 40px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .register-header {
@@ -165,9 +171,15 @@ async function handleSubmit() {
   margin-bottom: 30px;
 }
 
+.register-header p {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 .register-header h1 {
   margin-bottom: 8px;
-  color: #18a058;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .action-btns {
@@ -178,11 +190,14 @@ async function handleSubmit() {
   margin-top: 16px;
   text-align: center;
   font-size: 14px;
+  color: white;
 }
 
 .login-link a {
-  color: #18a058;
+  color: #ffffff;
+  font-weight: bold;
   text-decoration: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .login-link a:hover {

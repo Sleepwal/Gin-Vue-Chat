@@ -3,7 +3,9 @@
     <n-message-provider>
       <n-notification-provider>
         <n-dialog-provider>
-          <router-view />
+          <transition name="fade" mode="out-in">
+            <router-view />
+          </transition>
         </n-dialog-provider>
       </n-notification-provider>
     </n-message-provider>
@@ -28,4 +30,15 @@ provide('toggleTheme', toggleTheme)
 
 <style>
 /* 全局样式已在main.css中定义 */
+
+/* 页面切换动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>
